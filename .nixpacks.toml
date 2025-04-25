@@ -1,3 +1,51 @@
-# Force Nixpacks to treat the repo as *only* a Python project.
-# That prevents it from adding the Deno phase that crashed the build.
-providers = ["python"]
+###############################################################################
+# NIXPACKS CONFIG FOR SUNA – API + WEB + SUPABASE FUNCTIONS
+###############################################################################
+
+providers = ["python", "node"]
+
+#-------------  INSTALL  ------------------------------------------------------
+[phases.install]
+cmds = [
+  # Python deps
+  "pip install --no-cache-dir -r backend/requirements.txt",
+
+  # Node deps for the frontend
+  "npm --prefix frontend ci",
+
+  # tiny helper to run two processes
+  "npm install -g concurrently",
+
+  # Supabase CLI (single-binary, no npm global install)
+  "curl -fsSL https://github.com/supabase/cli/releases/latest/download/supabase_linux_amd64.tar.gz | \
+   tar -xz -C /usr/local/bin supabase"
+]
+
+#-------------  BUILD  --------------------------------------------------------
+[phases.build]
+cmds = [
+  # Next.js production build
+  "npm --prefix frontend run build",
+
+  # Bundle edge-function locally so Deno import-map errors disappear
+  "supabase functions build billing-functions \
+     --import-map backend/supabase/functions/billing-functions/deno.json"
+]
+
+#-------------  START  --------------------------------------------------------
+[phases.start]
+# PORT is injected by Coolify (usually 3000 or 8000)
+cmd = '''
+concurrently -k -s first -n api,web \
+  "uvicorn backend.main:app --host 0.0.0.0 --port 8000" \
+  "npm --prefix frontend run start -- --port $PORT"
+'''
+
+#-------------  ENV  ----------------------------------------------------------
+# Coolify will expose $PORT to the start command; map 80/443 in the UI.
+# Add your Supabase creds & any secrets in Coolify > Environment:
+#
+#  SUPABASE_URL       = https://xyz123.supabase.co
+#  SUPABASE_ANON_KEY  = ey...
+#  STRIPE_SECRET_KEY  = sk_live_...
+###############################################################################
