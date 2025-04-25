@@ -1,0 +1,3 @@
+# Force Nixpacks to treat the repo as *only* a Python project.
+# That prevents it from adding the Deno phase that crashed the build.
+providers = ["python"]
