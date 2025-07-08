@@ -1,0 +1,10 @@
+# Exclude Docker files from Railway backend builds
+Dockerfile
+.dockerignore
+
+# Keep sandbox Docker files (they're needed for functionality)
+!sandbox/docker/
+
+# Exclude environment reference files
+../railway-env-reference.md
+../railway-env-local.md 

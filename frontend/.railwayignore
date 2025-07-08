@@ -1,0 +1,6 @@
+# Exclude Docker files from Railway frontend builds
+Dockerfile
+
+# Exclude environment reference files
+../railway-env-reference.md
+../railway-env-local.md 

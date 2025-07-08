@@ -1,0 +1,8 @@
+# Exclude Docker files from Railway builds
+Dockerfile
+docker-compose*.yml
+docker-compose*.yaml
+.dockerignore
+
+# Keep sandbox Docker files (they're needed for functionality)
+!backend/sandbox/docker/ 

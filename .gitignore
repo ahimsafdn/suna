@@ -198,4 +198,8 @@ redis_data
 .setup_env.json
 
 backend/.test_token_compression.py
+
+# Local environment files with actual API keys (DO NOT COMMIT)
+railway-env-local.md
+*.env.local
 backend/test_token_compression_data.py
