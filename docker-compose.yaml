@@ -1,99 +1,25 @@
 services:
   redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-      - ./backend/services/docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    command: redis-server /usr/local/etc/redis/redis.conf --save 60 1 --loglevel warning
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
+    image: redis:7-alpine           # or delete if you’ll use the Redis plugin
   rabbitmq:
-    image: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
+    image: rabbitmq:3-management
   backend:
-    image: ghcr.io/suna-ai/suna-backend:latest
-    platform: linux/amd64
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend/.env:/app/.env:ro
-    env_file:
-      - ./backend/.env
+    build: ./backend
+    command: uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}
     environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=
-      - REDIS_SSL=False
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-    depends_on:
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      worker:
-        condition: service_started
-
+      PORT: 8000
+      REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
   worker:
-    image: ghcr.io/suna-ai/suna-backend:latest
-    platform: linux/amd64
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background
-    volumes:
-      - ./backend/.env:/app/.env:ro
-    env_file:
-      - ./backend/.env
+    build: ./backend
+    command: uv run dramatiq --processes 4 --threads 4 run_agent_background
     environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=
-      - REDIS_SSL=False
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-    depends_on:
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-
+      PORT: 8000
+      REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
   frontend:
-    init: true
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend/.env.local:/app/.env.local:ro
+    build: ./frontend
+    command: npm run start -- -p ${PORT:-3000}
     environment:
-      - NODE_ENV=production
-    command: ["npm", "run", "start"]
-    depends_on:
-      - backend
-
-volumes:
-  redis_data:
-  rabbitmq_data:
+      PORT: 3000
+      NEXT_PUBLIC_BACKEND_URL: http://backend:8000/api
